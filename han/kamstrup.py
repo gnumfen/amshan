@@ -64,8 +64,8 @@ def _normalize_parsed_items(
         obis_map.FIELD_METER_MANUFACTURER: "Kamstrup",
     }
 
-    meter_type = next((x for x in list_items if x.obis == "1.1.96.1.1.256"), None)
-    is_ct_meter = meter_type is not None and meter_type.startswith("685")
+    meter_type = next((x for x in list_items if x.obis == "1.1.96.1.1.255"), None)
+    is_ct_meter = meter_type is not None and meter_type.value.startswith("685")
     field_scaling = _field_scaling_ct_meter if is_ct_meter else _field_scaling_standard
 
     for measure in list_items:
