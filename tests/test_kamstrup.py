@@ -42,6 +42,37 @@ no_list_1_three_phase = bytes.fromhex(
     ).replace(" ", "")
 )
 
+# Kamstup type starting with 685
+NOTIFICATION_BODY_TYPE_685 = (
+    "0219"
+    "0a0e 4b616d73747275705f5630303031"
+    "0906 0101000005ff 0a10 35373036353637303030303030303030"
+    "0906 01 01 60 01 01 ff 0a12 363835313133354344323430313131303930"   # 6851135CD240111090
+    "0906 01 01 01 0700ff 06 000005cb"
+    "0906 01 01 02 0700ff 06 00000000"
+    "0906 01 01 03 0700ff 06 00000000"
+    "0906 01 01 04 0700ff 06 00000082"
+    "0906 01 01 1f 0700ff 06 00000675" # IL1 => 1653
+    "0906 01 01 33 0700ff 06 000012df" # IL2 => 4831
+    "0906 01 01 47 0700ff 06 000001fd" # IL3 =>  509
+    "0906 01 01 20 0700ff 12 00e9"     # VL1 =>  233
+    "0906 01 01 34 0700ff 12 00e7"     # VL2 =>  231
+    "0906 01 01 48 0700ff 12 00e9"     # VL3 =>  233
+)
+
+type_685_three_phase = bytes.fromhex(
+    (
+        (
+            "e6e700"
+            "0f"
+            "00000000"
+            "0c07e803160507030aff800000"
+        )
+        + NOTIFICATION_BODY_TYPE_685
+    ).replace(" ", "")
+)
+
+
 # Kamstrup example 3: 1 hour list, single-phase, one-quadrant
 NOTIFICATION_BODY_NO_LIST_2_SINGLE_PHASE = (
     "020F"  # structure of 0x0f elements
@@ -856,3 +887,40 @@ class TestDecodeKamstrup:
         assert decoded["meter_manufacturer"] == "Kamstrup"
         assert decoded["meter_type"] == "000000000000000000"
         assert decoded["voltage_l1"] == 0
+
+    @pytest.mark.parametrize(
+        "llc_pdu,notification_body",
+        [
+            [type_685_three_phase, None],
+            [None, bytes.fromhex(NOTIFICATION_BODY_TYPE_685)],
+        ],
+    )
+    def test_decode_frame_type_685(self, llc_pdu, notification_body):
+        """Decode three phase no list number 1."""
+        if llc_pdu is not None:
+            decoded = kamstrup.decode_frame_content(llc_pdu)
+
+        if notification_body is not None:
+            decoded = kamstrup.decode_notification_body(notification_body)
+
+        pprint(decoded)
+        assert isinstance(decoded, dict)
+
+        if llc_pdu is not None:
+            assert len(decoded) == 15
+
+        assert decoded["active_power_export"] == 0
+        assert decoded["active_power_import"] == 1483
+        assert decoded["current_l1"] == 1.653
+        assert decoded["current_l2"] == 4.831
+        assert decoded["current_l3"] == 0.509
+        assert decoded["list_ver_id"] == "Kamstrup_V0001"
+        assert decoded["meter_id"] == "5706567000000000"
+        assert decoded["meter_manufacturer"] == "Kamstrup"
+        assert decoded["meter_type"] == "6851135CD240111090"
+        assert decoded["reactive_power_export"] == 130
+        assert decoded["reactive_power_import"] == 0
+        assert decoded["voltage_l1"] == 233
+        assert decoded["voltage_l2"] == 231
+        assert decoded["voltage_l3"] == 233
+
